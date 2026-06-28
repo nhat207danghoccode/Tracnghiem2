@@ -222,10 +222,21 @@ textarea{
 
 <textarea id="raw-text" placeholder="Dán đề trắc nghiệm vào đây theo chuẩn mẫu..."></textarea>
 
-<div style="margin-top:15px;text-align:center;">
+<div style="margin-top:15px;display:flex;gap:10px;flex-wrap:wrap;justify-content:center;">
+
+    <label class="btn gray" style="cursor:pointer;">
+        Thêm File Văn Bản
+        <input type="file"
+        id="textFile"
+        accept=".txt"
+        hidden
+        onchange="loadTextFile(event)">
+    </label>
+
     <button class="btn" onclick="generateQuiz()">
         Thực Thi Văn Bản
     </button>
+
 </div>
 
 </div>
@@ -314,6 +325,28 @@ function toggleVideo(){
         videoBtn.innerText="Bật Nền";
 
     }
+
+}
+
+function loadTextFile(event){
+
+    const file=event.target.files[0];
+
+    if(!file){
+
+        return;
+
+    }
+
+    const reader=new FileReader();
+
+    reader.onload=function(e){
+
+        document.getElementById("raw-text").value=e.target.result;
+
+    };
+
+    reader.readAsText(file,"UTF-8");
 
 }
 
