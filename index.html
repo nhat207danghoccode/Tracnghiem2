@@ -118,23 +118,8 @@ body{
     background:#475569;
 }
 
-#input-area{
-    display:none;
-    margin-bottom:25px;
-}
-
-textarea{
-    width:100%;
-    min-height:250px;
-    border:none;
-    border-radius:18px;
-    padding:20px;
-    font-size:15px;
-    resize:vertical;
-    box-shadow:0 4px 20px rgba(0,0,0,.08);
-    outline:none;
-    background:rgba(255,255,255,.92);
-    backdrop-filter:blur(5px);
+.activeTab{
+    background:#16a34a !important;
 }
 
 .question{
@@ -218,26 +203,15 @@ textarea{
     <div class="creator">Create @Nhat2007 - Nguyễn Phi Nhật</div>
 </div>
 
-<div id="input-area">
+<div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;">
 
-<textarea id="raw-text" placeholder="Dán đề trắc nghiệm vào đây theo chuẩn mẫu..."></textarea>
-
-<div style="margin-top:15px;display:flex;gap:10px;flex-wrap:wrap;justify-content:center;">
-
-    <label class="btn gray" style="cursor:pointer;">
-        Thêm File Văn Bản
-        <input type="file"
-        id="textFile"
-        accept=".txt"
-        hidden
-        onchange="loadTextFile(event)">
-    </label>
-
-    <button class="btn" onclick="generateQuiz()">
-        Thực Thi Văn Bản
+    <button class="btn activeTab" id="tabDN" onclick="switchTab('DN')">
+        Câu Hỏi Đúng Sai
     </button>
 
-</div>
+    <button class="btn gray" id="tabDS" onclick="switchTab('DS')">
+        Câu Hỏi Đúng Nhất
+    </button>
 
 </div>
 
@@ -251,12 +225,8 @@ textarea{
 
 <div class="buttons">
 
-    <button class="btn" onclick="reshuffleQuiz()">
-        Xáo trộn & Làm lại
-    </button>
-
-    <button class="btn gray" onclick="backToInput()">
-        Tạo Câu Hỏi Trắc Nghiệm
+    <button class="btn" onclick="reloadQuiz()">
+        Làm Lại
     </button>
 
     <button class="btn" onclick="toggleVideo()" id="videoBtn">
@@ -284,15 +254,11 @@ textarea{
 
 <script>
 
-let defaultText = `
-1. Bạn Phải Đóm Chúa không
-*A. Phải tôi là đóm chúa
-B. Không Phải tôi là siêu đóm chúa
-Chà Chà Con đóm này có thừa nhận không đây hịc 🙃
-Lưu ý mình chỉ nhận file có fom theo mẫu và đuôi .txt đuôi khác không hỗ trợ vui lòng thay đổi đuôi thành .txt cảm ơn
-`;
+let parsedQuestionsDN = [];
+let parsedQuestionsDS = [];
 
-let parsedQuestions = [];
+let currentTab = "DN";
+
 let correctCount = 0;
 
 const bgVideo=document.getElementById("bgVideo");
@@ -309,7 +275,7 @@ function toggleVideo(){
 
         bgVideo.play();
 
-        document.body.style.background="#000";
+        document.body.style.background="#fff";
 
         videoBtn.innerText="Tắt Nền";
 
@@ -329,39 +295,27 @@ function toggleVideo(){
 
 }
 
-function loadTextFile(event){
+async function loadQuestionFiles(){
 
-    const file=event.target.files[0];
+    try{
 
-    if(!file){
+        const dn=await fetch("DN.txt").then(r=>r.text());
 
-        return;
+        const ds=await fetch("DS.txt").then(r=>r.text());
 
-    }
+        parsedQuestionsDN=parseRawText(dn);
 
-    const reader=new FileReader();
+        parsedQuestionsDS=parseRawText(ds);
 
-    reader.onload=function(e){
-
-        document.getElementById("raw-text").value=e.target.result;
-
-    };
-
-    reader.readAsText(file,"UTF-8");
-
-}
-
-function shuffleArray(array){
-
-    for(let i=array.length-1;i>0;i--){
-
-        const j=Math.floor(Math.random()*(i+1));
-
-        [array[i],array[j]]=[array[j],array[i]];
+        switchTab("DN");
 
     }
 
-    return array;
+    catch(err){
+
+        alert("Không tìm thấy DN.txt hoặc DS.txt");
+
+    }
 
 }
 
@@ -390,8 +344,11 @@ function parseRawText(text){
             let cleanQ=trimmed.replace(/^(#?\d+[\.\:\s]\s*)/,'');
 
             currentQuestion={
+
                 q:cleanQ,
+
                 arr:[]
+
             };
 
         }
@@ -418,19 +375,21 @@ function parseRawText(text){
 
 }
 
-function generateQuiz(){
+function switchTab(type){
 
-    const textInput=document.getElementById('raw-text').value;
+    currentTab=type;
 
-    if(!textInput.trim()){
+    document.getElementById("tabDN").classList.remove("activeTab");
 
-        alert("Vui lòng nhập đề");
+    document.getElementById("tabDS").classList.remove("activeTab");
 
-        return;
+    document.getElementById("tabDN").classList.add("gray");
 
-    }
+    document.getElementById("tabDS").classList.add("gray");
 
-    parsedQuestions=parseRawText(textInput);
+    document.getElementById("tab"+type).classList.add("activeTab");
+
+    document.getElementById("tab"+type).classList.remove("gray");
 
     buildQuizHTML();
 
@@ -438,7 +397,7 @@ function generateQuiz(){
 
 function buildQuizHTML(){
 
-    const container=document.getElementById('quiz-container');
+    const container=document.getElementById("quiz-container");
 
     container.innerHTML="";
 
@@ -446,11 +405,15 @@ function buildQuizHTML(){
 
     document.getElementById("correctAnswer").innerText=0;
 
-    const shuffledQuestions=shuffleArray([...parsedQuestions]);
+    let questions=currentTab==="DN"
 
-    document.getElementById("totalQuestion").innerText=shuffledQuestions.length;
+    ? parsedQuestionsDN
 
-    shuffledQuestions.forEach((item,qIndex)=>{
+    : parsedQuestionsDS;
+
+    document.getElementById("totalQuestion").innerText=questions.length;
+
+    questions.forEach((item,qIndex)=>{
 
         const qBlock=document.createElement("div");
 
@@ -468,20 +431,31 @@ function buildQuizHTML(){
 
             let isCorrect=option.startsWith('*');
 
+            let label=option.match(/^\*?([A-E])/)[1];
+
             let cleanText=option.replace(/^\*?[A-E]\s*[\.\:\s]\s*/,'');
 
             return{
+
+                label:label,
+
                 text:cleanText,
+
                 isCorrect:isCorrect
+
             };
 
         });
 
-        optionsData=shuffleArray(optionsData);
-
         const optionsList=document.createElement("div");
 
         optionsList.className="options";
+
+        const inputType=currentTab==="DN"
+
+        ? "checkbox"
+
+        : "radio";
 
         optionsData.forEach((opt)=>{
 
@@ -495,110 +469,111 @@ function buildQuizHTML(){
 
             }
 
-            const radio=document.createElement("input");
+            const input=document.createElement("input");
 
-            radio.type="radio";
+            input.type=inputType;
 
-            radio.name=`question_${qIndex}`;
+            input.name=`question_${qIndex}`;
 
             const span=document.createElement("span");
 
-            span.innerText=opt.text;
+            span.innerText=`${opt.label}. ${opt.text}`;
 
-            optItem.appendChild(radio);
+            optItem.appendChild(input);
 
             optItem.appendChild(span);
-
-            optItem.onclick=function(){
-
-                if(qBlock.classList.contains("answered")){
-
-                    return;
-
-                }
-
-                qBlock.classList.add("answered");
-
-                radio.checked=true;
-
-                const allOptions=optionsList.querySelectorAll(".option");
-
-                allOptions.forEach(li=>{
-
-                    li.style.pointerEvents="none";
-
-                    if(li.classList.contains("correct-target")){
-
-                        li.classList.add("correct");
-
-                    }
-
-                });
-
-                if(opt.isCorrect){
-
-                    correctCount++;
-
-                    document.getElementById("correctAnswer").innerText=correctCount;
-
-                }
-
-                else{
-
-                    optItem.classList.add("wrong");
-
-                }
-
-            };
 
             optionsList.appendChild(optItem);
 
         });
 
+        const submitBtn=document.createElement("button");
+
+        submitBtn.className="btn";
+
+        submitBtn.style.marginTop="15px";
+
+        submitBtn.innerText="Trả Lời";
+
+        submitBtn.onclick=function(){
+
+            if(qBlock.classList.contains("answered")){
+
+                return;
+
+            }
+
+            qBlock.classList.add("answered");
+
+            const allOptions=optionsList.querySelectorAll(".option");
+
+            let allCorrect=true;
+
+            allOptions.forEach(li=>{
+
+                const inp=li.querySelector("input");
+
+                const isCorrect=li.classList.contains("correct-target");
+
+                li.style.pointerEvents="none";
+
+                if(isCorrect){
+
+                    li.classList.add("correct");
+
+                }
+
+                if(inp.checked!==isCorrect){
+
+                    allCorrect=false;
+
+                    if(inp.checked && !isCorrect){
+
+                        li.classList.add("wrong");
+
+                    }
+
+                }
+
+            });
+
+            if(allCorrect){
+
+                correctCount++;
+
+                document.getElementById("correctAnswer").innerText=correctCount;
+
+            }
+
+        };
+
         qBlock.appendChild(optionsList);
+
+        qBlock.appendChild(submitBtn);
 
         container.appendChild(qBlock);
 
     });
 
-    window.scrollTo({
-        top:0,
-        behavior:"smooth"
-    });
-
 }
 
-function reshuffleQuiz(){
+function reloadQuiz(){
 
     buildQuizHTML();
 
-}
+    window.scrollTo({
 
-function backToInput(){
+        top:0,
 
-    const area=document.getElementById("input-area");
+        behavior:"smooth"
 
-    if(area.style.display==="none" || area.style.display===""){
-
-        area.style.display="block";
-
-        document.getElementById("raw-text").value=defaultText;
-
-    }
-
-    else{
-
-        area.style.display="none";
-
-    }
+    });
 
 }
 
 window.onload=function(){
 
-    parsedQuestions=parseRawText(defaultText);
-
-    buildQuizHTML();
+    loadQuestionFiles();
 
 };
 
